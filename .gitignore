@@ -1,0 +1,8 @@
+# Ignore macOS-specific files
+.DS_Store
+
+# Ignore the data directory
+data/
+
+# Ignore Neo4j Creds
+Neo4j-f8c0c7d4-Created-2024-11-29.txt
