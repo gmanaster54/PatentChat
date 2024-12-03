@@ -32,9 +32,7 @@ with open(citations_file, "r") as file:
                 filtered_citations.append((from_node, to_node))
 
 print(f"Filtered {len(filtered_citations)} valid citations.")
-
-# Write filtered citations to the output CSV file
-print("Writing filtered citations to CSV...")
+print("Writing filtered citations to CSV..")
 with open(output_file, "w", newline="") as csvfile:
     fieldnames = ["FromNodeID", "ToNodeID"]
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

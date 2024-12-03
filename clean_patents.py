@@ -17,12 +17,12 @@ def is_valid_pno(pno):
     """
     # Remove commas and strip leading zeros
     pno = pno.replace(",", "").lstrip("0")
-    if pno.isdigit() and 4000000 <= int(pno) <= 5000000:
+    if pno.isdigit() and 4000000 <= int(pno) < 5000000 and pno not in node_ids:
         return pno
     return None
 
 # Process all files in the input directory
-for filename in os.listdir(input_directory):
+for filename in sorted(os.listdir(input_directory)):
     if filename.endswith(".dat"):
         input_file = os.path.join(input_directory, filename)
         print(f"Processing file: {input_file}")
@@ -96,7 +96,10 @@ for filename in os.listdir(input_directory):
         if processed_patents >= max_patents:
             break
 
-# Write the extracted data to a single CSV file
+# Sort patents by PNO
+patents.sort(key=lambda patent: int(patent["PNO"]))
+
+# Write the sorted data to a single CSV file
 with open(output_file, "w", newline="") as csvfile:
     fieldnames = ["PNO", "PAL", "NAM", "City", "State", "ISD", "TTL"]
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
