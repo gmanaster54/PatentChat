@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { TextField, Button, Box } from "@mui/material";
+import { TextField, Button, Box, Slider, Typography } from "@mui/material";
 
 function QueryInput({ onSubmit }) {
     const [query, setQuery] = useState("");
+    const [weightBalance, setWeightBalance] = useState(0.7);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -16,18 +17,19 @@ function QueryInput({ onSubmit }) {
             const response = await fetch('http://localhost:8080/api/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({ query, weightBalance }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
                 console.log('Raw data from backend:', data);
-                // Include score in the filtered results
                 const filteredResults = data.map((item) => ({
                     TTL: item.TTL || "No Title",
                     PAL: item.PAL || "No Abstract",
-                    score: item.score || 0
+                    similarity_score: item.similarity_score || 0,
+                    citation_count: item.citation_count || 0,
+                    combined_score: item.combined_score || 0
                 }));
                 console.log('Filtered Results:', filteredResults);
                 onSubmit(filteredResults);
@@ -52,6 +54,25 @@ function QueryInput({ onSubmit }) {
                 fullWidth
                 sx={{ marginBottom: 2 }}
             />
+            <Typography gutterBottom>
+                Balance between Semantic Search and Citation Weight
+            </Typography>
+            <Box sx={{ marginBottom: 2 }}>
+                <Slider
+                    value={weightBalance}
+                    onChange={(e, newValue) => setWeightBalance(newValue)}
+                    step={0.1}
+                    min={0}
+                    max={1}
+                    valueLabelDisplay="auto"
+                    valueLabelFormat={value => `${(value * 100).toFixed(0)}% Semantic`}
+                    marks={[
+                        { value: 0, label: '0% Semantic' },
+                        { value: 0.5, label: '50%' },
+                        { value: 1, label: '100% Semantic' },
+                    ]}
+                />
+            </Box>
             <Button
                 type="submit"
                 variant="contained"

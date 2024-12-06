@@ -31,7 +31,11 @@ function ResultsDisplay({ results }) {
                                 <strong>Abstract:</strong> {result.PAL}
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
-                                <strong>Similarity Score:</strong> {typeof result.score === 'number' ? (result.score * 100).toFixed(2) : 'N/A'}%
+                                <strong>Semantic Score:</strong> {(result.similarity_score * 100).toFixed(2)}%
+                                <br />
+                                <strong>Citations:</strong> {result.citation_count}
+                                <br />
+                                <strong>Combined Score:</strong> {(result.combined_score * 100).toFixed(2)}%
                             </Typography>
                         </CardContent>
                     </Card>

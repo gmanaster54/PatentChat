@@ -3,23 +3,26 @@ const cors = require('cors');
 const { spawn } = require('child_process');
 require('dotenv').config();
 
-// Create an Express app
 const app = express();
-app.use(cors({ origin: 'http://localhost:3000' })); // Enable CORS
-app.use(express.json()); // Middleware to parse JSON request bodies
+app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(express.json());
 
-// API endpoint to handle patent query
 app.post('/api/query', (req, res) => {
     try {
-        const userInput = req.body.query; // Get the query from the frontend
+        const userInput = req.body.query;
+        const weightBalance = req.body.weightBalance;
         console.log('User input:', userInput);
+        console.log('Weight balance:', weightBalance);
 
-        // Spawn the Python process
-        const pythonProcess = spawn('python', ['vector_search.py', userInput]);
+        const pythonProcess = spawn('python', [
+            'vector_search.py',
+            userInput,
+            weightBalance.toString()
+        ]);
 
         let pythonOutput = '';
         pythonProcess.stdout.on('data', (data) => {
-            pythonOutput += data.toString(); // Collect output from Python script
+            pythonOutput += data.toString();
         });
         pythonProcess.stderr.on('data', (data) => {
             console.error(`Python error: ${data}`);
@@ -28,7 +31,6 @@ app.post('/api/query', (req, res) => {
         pythonProcess.on('close', (code) => {
             if (code === 0) {
                 try {
-                    // Parse the Python output and send it to the frontend
                     const nearestPatents = JSON.parse(pythonOutput);
                     console.log('Nearest patents:', nearestPatents);
                     res.status(200).json(nearestPatents);
@@ -46,7 +48,6 @@ app.post('/api/query', (req, res) => {
     }
 });
 
-// Start the server
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

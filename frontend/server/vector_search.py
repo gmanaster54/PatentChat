@@ -9,7 +9,6 @@ AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
 DB_NAME = 'neo4j'
 
 def log(message):
-    # Print to stderr so it doesn't interfere with JSON output
     print(message, file=sys.stderr)
 
 def generate_embedding(user_input):
@@ -22,10 +21,11 @@ def generate_embedding(user_input):
     log(f"Embedding generated with shape: {embedding.shape}")
     return embedding
 
-def find_nearest(embedding):
+def find_nearest(embedding, semantic_weight):
     log("\nConnecting to Neo4j database...")
     driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
     nearest_patents = []
+    citation_weight = 1 - semantic_weight
 
     with driver.session(database=DB_NAME) as session:
         log("Executing vector search query...")
@@ -42,9 +42,12 @@ def find_nearest(embedding):
                 patentNumber AS PNO,
                 score as similarityScore,
                 citationCount,
-                (score * 0.7 + (log(1 + citationCount)/10) * 0.3) as combinedScore
+                (score * $semanticWeight + (log(1 + citationCount)/10) * $citationWeight) as combinedScore
             ORDER BY combinedScore DESC
-        ''', queryEmbedding=embedding)
+        ''', 
+        queryEmbedding=embedding,
+        semanticWeight=semantic_weight,
+        citationWeight=citation_weight)
 
         log("\nProcessing results:")
         log("-" * 50)
@@ -71,10 +74,10 @@ def find_nearest(embedding):
 if __name__ == "__main__":
     try:
         user_input = sys.argv[1]
+        semantic_weight = float(sys.argv[2])
         embedding = generate_embedding(user_input)
-        nearest_patents = find_nearest(embedding)
+        nearest_patents = find_nearest(embedding, semantic_weight)
 
-        # Only print the JSON to stdout
         print(json.dumps(nearest_patents))
         
     except Exception as e:
