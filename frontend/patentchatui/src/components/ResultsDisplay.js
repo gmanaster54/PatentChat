@@ -5,7 +5,7 @@ function ResultsDisplay({ results }) {
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Search Results
+                Results
             </Typography>
             {results.length === 0 ? (
                 <Typography variant="body1">No results to display.</Typography>

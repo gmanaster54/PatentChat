@@ -1,6 +1,7 @@
 const express = require('express');
 const neo4j = require('neo4j-driver');
 const cors = require('cors'); // Import CORS
+const { spawn } = require('child_process');
 
 require('dotenv').config();
 
@@ -27,6 +28,30 @@ app.use(express.json());
 // API endpoint to handle patent query
 app.post('/api/query', async (req, res) => {
     try {
+
+        const userInput = req.body.query;
+        console.log(userInput);
+
+        const pythonProcess = spawn('python3', ["vector_search.py"], userInput);
+
+        let output = "";
+        pythonProcess.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`stderr: ${data}`);
+        });
+
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                res.json({ embedding: JSON.parse(output) });
+            } else {
+                res.status(500).json({ error: 'Error generating embedding.' });
+            }
+        });
+
+
         // Test connectivity with a simple query
         const result = await session.run(
             `
@@ -43,7 +68,6 @@ app.post('/api/query', async (req, res) => {
                 properties: node.properties, // All properties of the node
             };
         });
-        console.log(nodes);
         res.status(200).json(nodes);
     } catch (error) {
         console.error('Error querying Neo4j:', error);
