@@ -6,3 +6,4 @@ data/
 
 # Ignore Neo4j Creds
 Neo4j-f8c0c7d4-Created-2024-11-29.txt
+neo_creds.py
