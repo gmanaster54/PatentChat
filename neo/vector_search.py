@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import neo4j
-from neo_creds import NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
+from neo.neo_creds import NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
 
 
 URI = NEO4J_URI
