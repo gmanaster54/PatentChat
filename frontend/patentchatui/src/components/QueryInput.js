@@ -4,11 +4,30 @@ import { TextField, Button, Box } from "@mui/material";
 function QueryInput({ onSubmit }) {
     const [query, setQuery] = useState("");
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (query.trim()) {
-            onSubmit(query);
-            setQuery(""); // Clear the input after submission
+        try {
+            const response = await fetch('http://localhost:8080/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                console.log(data); // Debug: Log all returned nodes
+                // Extract only TTL and PAL fields
+                const filteredResults = data.map(node => {
+                    const { TTL, PAL } = node.properties;
+                    return { TTL, PAL }; // Include only the desired fields
+                });
+                onSubmit(filteredResults); // Pass filtered results to the parent
+            } else {
+                console.error(data.error);
+            }
+        } catch (error) {
+            console.error('Error fetching results:', error);
         }
     };
 
