@@ -1,50 +1,3 @@
-# from sentence_transformers import SentenceTransformer
-# import neo4j
-# from neo_creds import NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD
-# import sys
-# import json
-
-# URI = NEO4J_URI
-# AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
-# DB_NAME = 'neo4j'
-
-# def generate_embedding(user_input):
-
-#     model = SentenceTransformer('all-MiniLM-L6-v2')
-
-#     query_embedding = model.encode(user_input)
-
-#     return query_embedding
-
-# def find_nearest(embedding):
-#     driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
-#     driver.verify_connectivity()
-
-#     nearest_patents = []
-
-#     related_patents, _, _ = driver.execute_query('''
-#         CALL db.index.vector.queryNodes('patentAbstracts', 5, $queryEmbedding)
-#         YIELD node, score
-#         RETURN node.TTL AS TTL, node.PAL AS PAL, score
-#         ''', queryEmbedding=embedding,
-#         database_=DB_NAME)
-    
-#     for record in related_patents:
-#         nearest_patents.append({'TTL': record[0], 'PAL': record[1]})
-
-#     return nearest_patents
-
-# if __name__ == "__main__":
-#     # Read input from Node.js
-#     user_input = sys.argv[1]  # The second argument is the userInput passed from server.js
-#     # Generate embedding
-#     embedding = generate_embedding(user_input)
-#     # print(embedding)
-#     # Return the embedding as a JSON string
-#     nearest_patents = find_nearest(embedding)
-
-#     print(json.dumps(nearest_patents))
-
 from sentence_transformers import SentenceTransformer
 import neo4j
 import sys
@@ -55,35 +8,79 @@ URI = NEO4J_URI
 AUTH = (NEO4J_USERNAME, NEO4J_PASSWORD)
 DB_NAME = 'neo4j'
 
-def generate_embedding(user_input):
-    model = SentenceTransformer('all-MiniLM-L6-v2')
-    return model.encode(user_input)
+def log(message):
+    print(message, file=sys.stderr)
 
-def find_nearest(embedding):
+def generate_embedding(user_input):
+    log(f"\n=== Starting Patent Search ===")
+    log(f"User Query: {user_input}")
+    log("\nGenerating embedding...")
+    
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding = model.encode(user_input)
+    log(f"Embedding generated with shape: {embedding.shape}")
+    return embedding
+
+def find_nearest(embedding, semantic_weight):
+    log("\nConnecting to Neo4j database...")
     driver = neo4j.GraphDatabase.driver(URI, auth=AUTH)
     nearest_patents = []
+    citation_weight = 1 - semantic_weight
 
     with driver.session(database=DB_NAME) as session:
+        log("Executing vector search query...")
         result = session.run('''
             CALL db.index.vector.queryNodes('patentAbstracts', 5, $queryEmbedding)
             YIELD node, score
-            RETURN node.TTL AS TTL, node.PAL AS PAL, score
-        ''', queryEmbedding=embedding)
+            WITH node, score, node.PNO as patentNumber
+            MATCH (source)-[edge]->(target)
+            WHERE target.PNO = patentNumber 
+            WITH node, score, patentNumber, count(edge) as citationCount
+            RETURN 
+                node.TTL AS TTL, 
+                node.PAL AS PAL,
+                patentNumber AS PNO,
+                score as similarityScore,
+                citationCount,
+                (score * $semanticWeight + (log(1 + citationCount)/10) * $citationWeight) as combinedScore
+            ORDER BY combinedScore DESC
+        ''', 
+        queryEmbedding=embedding,
+        semanticWeight=semantic_weight,
+        citationWeight=citation_weight)
 
+        log("\nProcessing results:")
+        log("-" * 50)
         for record in result:
-            nearest_patents.append({'TTL': record['TTL'], 'PAL': record['PAL']})
+            log(f"\nPatent: {record['PNO']}")
+            log(f"Title: {record['TTL'][:100]}...")
+            log(f"Similarity Score: {record['similarityScore']:.4f}")
+            log(f"Citation Count: {record['citationCount']}")
+            log(f"Combined Score: {record['combinedScore']:.4f}")
+            log("-" * 50)
+            
+            nearest_patents.append({
+                'TTL': record['TTL'], 
+                'PAL': record['PAL'],
+                'PNO': record['PNO'],
+                'similarity_score': record['similarityScore'],
+                'citation_count': record['citationCount'],
+                'combined_score': record['combinedScore']
+            })
 
+    log(f"\nFound {len(nearest_patents)} matching patents")
     return nearest_patents
 
 if __name__ == "__main__":
     try:
-        user_input = sys.argv[1]  # Input passed from Node.js
+        user_input = sys.argv[1]
+        semantic_weight = float(sys.argv[2])
         embedding = generate_embedding(user_input)
-        nearest_patents = find_nearest(embedding)
+        nearest_patents = find_nearest(embedding, semantic_weight)
 
-        # Return the result as a JSON string
         print(json.dumps(nearest_patents))
+        
     except Exception as e:
-        # Return an error message as JSON
+        log(f"\nERROR: {str(e)}")
         print(json.dumps({"error": str(e)}))
         sys.exit(1)

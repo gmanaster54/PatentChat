@@ -1,6 +1,8 @@
 # Ignore macOS-specific files
 .DS_Store
 
+/venv
+
 # Ignore the data directory
 data/
 
