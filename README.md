@@ -9,3 +9,6 @@ Interactions with the Neo4j Database are stoed in neo. This includes uploading e
 
 ## Frontend
 The React frontend is defined in the frontend directory.
+
+## To Run the APP
+Cd into the patentui folder and run npm start to start up the UI. Cd into the server and run node index.js to start the node server.
